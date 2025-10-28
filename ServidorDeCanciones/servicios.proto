@@ -1,0 +1,44 @@
+syntax = "proto3";
+
+package capaFachadaServices;
+option go_package = "/serviciosCancion";
+
+service serviciosCanciones {
+  rpc BuscarCancion (PeticionDTO) returns (RespuestaCancionDTO);
+  rpc BuscarPorGenero (PeticionGeneroDTO) returns (RespuestaListaCancionesDTO);
+}
+
+message PeticionDTO {
+  string titulo = 1;
+}
+
+message PeticionGeneroDTO {
+  string genero = 1;
+}
+
+message Genero{
+  int32 Id = 1;
+  string Nombre = 2;
+}
+
+message Cancion {
+  int32 Id = 1;
+	string Titulo = 2;
+	string Artista_Banda = 3;
+	int32 Lanzamiento = 4;
+	string Duracion = 5;
+	Genero objGenero = 6;
+}
+
+message RespuestaCancionDTO {
+  string mensaje = 1;
+  int32 codigo =2;  
+  Cancion objCancion=3;
+}
+
+// Respuesta para múltiples canciones
+message RespuestaListaCancionesDTO {
+  string mensaje = 1;
+  int32 codigo = 2;
+  repeated Cancion canciones = 3;  // ¡Aquí está el array!
+}
