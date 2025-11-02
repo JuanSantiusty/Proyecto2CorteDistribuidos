@@ -34,14 +34,14 @@ func (s *ServiciosCancion) AlmacenarCancion(cancionalmacenardto dto.CancionAlmac
 	cancionNueva := MapearCancionAlmacenarDTOACancion(cancionalmacenardto, s.servicioGenero)
 	er := s.repo.AgregarCancion(cancionNueva, data)
 	if er != nil {
-		s.colaRa.PublicarNotificacion(cola.NotificacionCancion{
+		go s.colaRa.PublicarNotificacion(cola.NotificacionCancion{
 			Titulo:  cancionNueva.Titulo,
 			Artista: cancionNueva.Artista_Banda,
 			Genero:  cancionNueva.Genero.Nombre,
 			Mensaje: "Canción " + cancionNueva.Titulo + "Almacenada sin exito",
 		})
 	} else {
-		s.colaRa.PublicarNotificacion(cola.NotificacionCancion{
+		go s.colaRa.PublicarNotificacion(cola.NotificacionCancion{
 			Titulo:  cancionNueva.Titulo,
 			Artista: cancionNueva.Artista_Banda,
 			Genero:  cancionNueva.Genero.Nombre,
