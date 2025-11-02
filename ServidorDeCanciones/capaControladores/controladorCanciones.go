@@ -1,156 +1,183 @@
 package capaControladores
 
 import (
-	"context"
-	"log"
-
-	rp "servidor/grpc-servidor/CapaAccesoDatos"
-	mo "servidor/grpc-servidor/CapaAccesoDatos/modelos"
+	"encoding/json"
+	"net/http"
 	se "servidor/grpc-servidor/capaFachadaServices"
-	pb "servidor/grpc-servidor/serviciosCancion"
+	dto "servidor/grpc-servidor/capaFachadaServices/DTO"
+	"strconv"
+	"strings"
 )
 
-// ControladorCanciones maneja las peticiones relacionadas con canciones
-type ControladorCanciones struct {
-	pb.UnimplementedServiciosCancionesServer
-	repo *rp.CancionesRepo
+type ControladorCancion struct {
+	servicioCancion *se.ServiciosCancion
 }
 
-// NewControladorCanciones crea una nueva instancia del controlador
-func NewControladorCanciones(repo *rp.CancionesRepo) *ControladorCanciones {
-	return &ControladorCanciones{
-		repo: repo,
+func NuevoControladorCancion() *ControladorCancion {
+	servicio := se.NuevoServicioCanciones()
+	return &ControladorCancion{
+		servicioCancion: servicio,
 	}
 }
 
-// BuscarCancion maneja la petición de búsqueda de canción
-func (c *ControladorCanciones) BuscarCancion(ctx context.Context, req *pb.PeticionDTO) (*pb.RespuestaCancionDTO, error) {
-	// Validar entrada
-	if req == nil {
-		log.Println("Error: Petición nula recibida")
-		return c.crearRespuestaError("Petición inválida", 400), nil
+// AlmacenarCancion maneja las peticiones POST para almacenar una nueva canción
+func (c *ControladorCancion) AlmacenarCancion(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+
+	if r.Method != http.MethodPost {
+		http.Error(w, "Método no permitido", http.StatusMethodNotAllowed)
+		return
 	}
 
-	titulo := req.GetTitulo()
+	// Parsear el formulario multipart para obtener archivo y datos
+	err := r.ParseMultipartForm(32 << 20) // 32 MB máximo
+	if err != nil {
+		http.Error(w, "Error al procesar el formulario: "+err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	// Obtener el archivo de audio
+	file, handler, err := r.FormFile("audio")
+	if err != nil {
+		http.Error(w, "Error al obtener el archivo de audio: "+err.Error(), http.StatusBadRequest)
+		return
+	}
+	defer file.Close()
+
+	// Leer los datos del archivo
+	fileBytes := make([]byte, handler.Size)
+	_, err = file.Read(fileBytes)
+	if err != nil {
+		http.Error(w, "Error al leer el archivo: "+err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	// Obtener los datos del formulario
+	titulo := r.FormValue("titulo")
+	artistaBanda := r.FormValue("artista_banda")
+	lanzamientoStr := r.FormValue("lanzamiento")
+	duracion := r.FormValue("duracion")
+	genero := r.FormValue("genero")
+
+	// Validar campos obligatorios
+	if titulo == "" || artistaBanda == "" || lanzamientoStr == "" || duracion == "" || genero == "" {
+		http.Error(w, "Todos los campos son obligatorios", http.StatusBadRequest)
+		return
+	}
+
+	// Convertir lanzamiento a int32
+	lanzamiento, err := strconv.Atoi(lanzamientoStr)
+	if err != nil {
+		http.Error(w, "El año de lanzamiento debe ser un número válido", http.StatusBadRequest)
+		return
+	}
+
+	// Crear DTO
+	cancionDTO := dto.CancionAlmacenarDTO{
+		Titulo:        titulo,
+		Artista_Banda: artistaBanda,
+		Lanzamiento:   int32(lanzamiento),
+		Duracion:      duracion,
+		Genero:        genero,
+	}
+
+	// Llamar al servicio
+	err = c.servicioCancion.AlmacenarCancion(cancionDTO, fileBytes)
+	if err != nil {
+		http.Error(w, "Error al almacenar la canción: "+err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	// Respuesta exitosa
+	respuesta := dto.NewRespuestaDTO(cancionDTO, 200, "Canción almacenada exitosamente")
+	w.WriteHeader(http.StatusCreated)
+	json.NewEncoder(w).Encode(respuesta)
+}
+
+// BuscarCancion maneja las peticiones GET para buscar una canción por título
+func (c *ControladorCancion) BuscarCancion(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+
+	if r.Method != http.MethodGet {
+		http.Error(w, "Método no permitido", http.StatusMethodNotAllowed)
+		return
+	}
+
+	// Obtener el título de los query parameters
+	titulo := r.URL.Query().Get("titulo")
 	if titulo == "" {
-		log.Println("Error: Título vacío en la petición")
-		return c.crearRespuestaError("Título requerido", 400), nil
+		http.Error(w, "El parámetro 'titulo' es requerido", http.StatusBadRequest)
+		return
 	}
 
-	// Log de la operación
-	log.Printf("Buscando canción con título: %s", titulo)
+	// Llamar al servicio
+	respuesta := c.servicioCancion.BuscarCancion(titulo)
 
-	// Llamar al servicio de la capa de fachada
-	resp := se.BuscarCancion(titulo, c.repo)
-
-	// Convertir la respuesta del modelo interno a DTO de protobuf
-	respuestaDTO := c.convertirAProtobufDTO(resp)
-
-	log.Printf("Búsqueda completada. Código de respuesta: %d", respuestaDTO.Codigo)
-	return respuestaDTO, nil
+	// Enviar respuesta
+	w.WriteHeader(int(respuesta.Codigo))
+	json.NewEncoder(w).Encode(respuesta)
 }
 
-// BuscarPorGenero maneja la búsqueda de canciones por género
-func (c *ControladorCanciones) BuscarPorGenero(ctx context.Context, req *pb.PeticionGeneroDTO) (*pb.RespuestaListaCancionesDTO, error) {
-	// Validar entrada
-	if req == nil {
-		log.Println("Error: Petición nula recibida para búsqueda por género")
-		return c.crearRespuestaListaError("Petición inválida", 400), nil
+// BuscarPorGenero maneja las peticiones GET para buscar canciones por género
+func (c *ControladorCancion) BuscarPorGenero(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+
+	if r.Method != http.MethodGet {
+		http.Error(w, "Método no permitido", http.StatusMethodNotAllowed)
+		return
 	}
 
-	genero := req.GetGenero()
+	// Obtener el género de los query parameters
+	genero := r.URL.Query().Get("genero")
 	if genero == "" {
-		log.Println("Error: Género vacío en la petición")
-		return c.crearRespuestaListaError("Género requerido", 400), nil
+		http.Error(w, "El parámetro 'genero' es requerido", http.StatusBadRequest)
+		return
 	}
 
-	log.Printf("Buscando canciones del género: %s", genero)
+	// Llamar al servicio
+	respuesta := c.servicioCancion.BuscarPorGenero(genero)
 
-	// Llamar al servicio de búsqueda por género
-	resp := se.BuscarPorGenero(genero, c.repo)
-
-	// Convertir respuesta a DTO de protobuf
-	respuestaDTO := c.convertirAProtobufListaDTO(resp)
-
-	log.Printf("Búsqueda por género completada. Código: %d", respuestaDTO.Codigo)
-	return respuestaDTO, nil
+	// Enviar respuesta
+	w.WriteHeader(int(respuesta.Codigo))
+	json.NewEncoder(w).Encode(respuesta)
 }
 
-// convertirAProtobufDTO convierte la respuesta interna a formato protobuf
-func (c *ControladorCanciones) convertirAProtobufDTO(resp mo.RespuestaDTO[mo.Cancion]) *pb.RespuestaCancionDTO {
-	respuesta := &pb.RespuestaCancionDTO{
-		Codigo:  resp.Codigo,
-		Mensaje: resp.Mensaje,
+// ListarCanciones maneja las peticiones GET para listar todas las canciones
+func (c *ControladorCancion) ListarCanciones(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+
+	if r.Method != http.MethodGet {
+		http.Error(w, "Método no permitido", http.StatusMethodNotAllowed)
+		return
 	}
 
-	// Solo llenar los datos si la respuesta fue exitosa
-	if resp.Codigo == 200 && resp.Data.Id != 0 {
-		respuesta.ObjCancion = &pb.Cancion{
-			Id:            resp.Data.Id,
-			Titulo:        resp.Data.Titulo,
-			Artista_Banda: resp.Data.Artista_Banda,
-			Lanzamiento:   resp.Data.Lanzamiento,
-			Duracion:      resp.Data.Duracion,
-			ObjGenero: &pb.Genero{
-				Id:     resp.Data.Genero.Id,
-				Nombre: resp.Data.Genero.Nombre,
-			},
+	// Llamar al servicio
+	respuesta := c.servicioCancion.ListarCanciones()
+
+	// Enviar respuesta
+	w.WriteHeader(int(respuesta.Codigo))
+	json.NewEncoder(w).Encode(respuesta)
+}
+
+// ManejarCanciones es un router que maneja todas las rutas de canciones
+func (c *ControladorCancion) ManejarCanciones(w http.ResponseWriter, r *http.Request) {
+	path := strings.TrimPrefix(r.URL.Path, "/canciones")
+
+	switch {
+	case path == "" && r.Method == http.MethodPost:
+		c.AlmacenarCancion(w, r)
+	case path == "" && r.Method == http.MethodGet:
+		c.ListarCanciones(w, r)
+	case strings.Contains(path, "/buscar") && r.Method == http.MethodGet:
+		// Extraer parámetros de query para búsqueda
+		if r.URL.Query().Get("titulo") != "" {
+			c.BuscarCancion(w, r)
+		} else if r.URL.Query().Get("genero") != "" {
+			c.BuscarPorGenero(w, r)
+		} else {
+			http.Error(w, "Parámetro de búsqueda no válido", http.StatusBadRequest)
 		}
+	default:
+		http.Error(w, "Ruta no encontrada", http.StatusNotFound)
 	}
-
-	return respuesta
-}
-
-// convertirAProtobufListaDTO convierte lista de canciones a formato protobuf
-func (c *ControladorCanciones) convertirAProtobufListaDTO(resp mo.RespuestaDTO[[]mo.Cancion]) *pb.RespuestaListaCancionesDTO {
-	respuesta := &pb.RespuestaListaCancionesDTO{
-		Codigo:  resp.Codigo,
-		Mensaje: resp.Mensaje,
-	}
-
-	// Solo llenar los datos si la respuesta fue exitosa
-	if resp.Codigo == 200 && len(resp.Data) > 0 {
-		respuesta.Canciones = make([]*pb.Cancion, len(resp.Data))
-
-		for i, cancion := range resp.Data {
-			respuesta.Canciones[i] = &pb.Cancion{
-				Id:            cancion.Id,
-				Titulo:        cancion.Titulo,
-				Artista_Banda: cancion.Artista_Banda,
-				Lanzamiento:   cancion.Lanzamiento,
-				Duracion:      cancion.Duracion,
-				ObjGenero: &pb.Genero{
-					Id:     cancion.Genero.Id,
-					Nombre: cancion.Genero.Nombre,
-				},
-			}
-		}
-	}
-
-	return respuesta
-}
-
-// crearRespuestaError crea una respuesta de error estándar
-func (c *ControladorCanciones) crearRespuestaError(mensaje string, codigo int32) *pb.RespuestaCancionDTO {
-	return &pb.RespuestaCancionDTO{
-		Codigo:     codigo,
-		Mensaje:    mensaje,
-		ObjCancion: nil,
-	}
-}
-
-// crearRespuestaListaError crea una respuesta de error para listas
-func (c *ControladorCanciones) crearRespuestaListaError(mensaje string, codigo int32) *pb.RespuestaListaCancionesDTO {
-	return &pb.RespuestaListaCancionesDTO{
-		Codigo:    codigo,
-		Mensaje:   mensaje,
-		Canciones: nil,
-	}
-}
-
-// InicializarDatos carga los datos iniciales
-func (c *ControladorCanciones) InicializarDatos() {
-	log.Println("Inicializando datos de canciones...")
-	se.CargarCanciones(c.repo)
-	log.Println("Datos de canciones cargados exitosamente")
 }
