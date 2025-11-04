@@ -24,7 +24,7 @@ public class PreferenciasServiceImpl implements IPreferenciasService {
 	public PreferenciasDTORespuesta getReferencias(String id) {
 		System.out.println("Obteniendo preferencias para el usuario con ID: " + id);
 		List<CancionRespuestaDTO> objCanciones = this.comunicacionServidorCanciones.obtenerCancionesRemotas();
-		System.out.println("Canciones obtenidas del servidor de canciones: ");
+		System.out.println("Canciones obtenidas del servidor de canciones: "+objCanciones.size());
 		for(CancionRespuestaDTO cancion : objCanciones){
 			System.out.println("Cancion Obtenida: " + cancion.getTitulo());
 			System.out.println("Genero: " + cancion.getGenero());
