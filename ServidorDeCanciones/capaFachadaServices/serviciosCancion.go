@@ -61,7 +61,7 @@ func (s *ServiciosCancion) BuscarCancion(titulo string) dto.RespuestaDTO[dto.Can
 		return dto.NewRespuestaDTO(respuesta, 200, "Canción encontrada")
 	} else {
 		fmt.Printf("Canción NO encontrada: %s\n", titulo)
-		respuesta := dto.NuevaCancionRespuestaDTO("", "", 0, "", "", "")
+		respuesta := dto.NuevaCancionRespuestaDTO(0, "", "", 0, "", "", "", "")
 		return dto.NewRespuestaDTO(respuesta, 404, "Canción no encontrada")
 	}
 }

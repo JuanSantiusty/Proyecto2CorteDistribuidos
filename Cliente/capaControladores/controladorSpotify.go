@@ -17,14 +17,16 @@ type ControladorSpotify struct {
 	servicioCancion   inf.FachadaCanciones
 	serviciosGenero   inf.FachadaGeneros
 	servicioStreaming inf.ServicioStreaming
+	User              string
 }
 
 // NewControladorSpotify crea nueva instancia con ambos servicios
-func NewControladorSpotify(servicioCancion inf.FachadaCanciones, serviciosGenero inf.FachadaGeneros, servicioStreaming inf.ServicioStreaming) *ControladorSpotify {
+func NewControladorSpotify(servicioCancion inf.FachadaCanciones, serviciosGenero inf.FachadaGeneros, servicioStreaming inf.ServicioStreaming, user string) *ControladorSpotify {
 	return &ControladorSpotify{
 		servicioCancion:   servicioCancion,
 		serviciosGenero:   serviciosGenero,
 		servicioStreaming: servicioStreaming,
+		User:              user,
 	}
 }
 
@@ -237,7 +239,8 @@ func (ctrl *ControladorSpotify) ReproducirCancionConAudio(cancion string) error 
 
 	// Crear petición gRPC
 	peticion := &pbStreaming.PeticionDTO{
-		Titulo: cancion,
+		Titulo:  cancion,
+		Formato: ctrl.User,
 	}
 
 	// Llamar al servidor de streaming

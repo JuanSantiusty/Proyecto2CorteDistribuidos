@@ -22,6 +22,7 @@ func GetRepositorioGeneros() *GeneroRepo {
 		instanceGenero = &GeneroRepo{}
 		indiceIdGenero = 0
 	})
+	instanceGenero.CargarGeneros()
 	return instanceGenero
 }
 
@@ -71,4 +72,10 @@ func (r *GeneroRepo) BuscarGeneroPorNombre(nombreGenero string) (mo.Genero, bool
 		}
 	}
 	return mo.Genero{}, false
+}
+
+func (r *GeneroRepo) CargarGeneros() {
+	r.AgregarGenero(mo.NewGenero(0, "Alternativo"))
+	r.AgregarGenero(mo.NewGenero(0, "Rock"))
+	r.AgregarGenero(mo.NewGenero(0, "Salsa"))
 }

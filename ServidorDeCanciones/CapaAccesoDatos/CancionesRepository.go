@@ -26,6 +26,7 @@ func GetRepositorioCanciones() *CancionesRepo {
 		indiceIdCancion = 0
 		indiceIdGenero = 0
 	})
+	instance.CargarCanciones()
 	return instance
 }
 
@@ -51,6 +52,14 @@ func (r *CancionesRepo) AgregarCancion(cancion mo.Cancion, data []byte) error {
 	cancion.Ruta = "../Canciones/" + fileName
 	r.canciones = append(r.canciones, cancion)
 
+	return nil
+}
+
+func (r *CancionesRepo) AgregarCancionSinData(cancion mo.Cancion) error {
+	//Asignar Id de manera automatica
+	obtenerIdCancion()
+	cancion.Id = indiceIdCancion
+	r.canciones = append(r.canciones, cancion)
 	return nil
 }
 
@@ -102,4 +111,12 @@ func (r *CancionesRepo) BuscarPorTitulo(nombre string) mo.Cancion {
 func obtenerIdCancion() int32 {
 	indiceIdCancion += 1
 	return indiceIdCancion
+}
+
+func (r *CancionesRepo) CargarCanciones() {
+	r.AgregarCancionSinData(mo.NewCancionC("Bad Habit", "Steve Lacy", int32(2022), "3:53", "../Canciones/bad_habit.mp3", "ingles", mo.NewGenero(1, "Alternativo")))
+	r.AgregarCancionSinData(mo.NewCancionC("Blood Was On My Skin", "Club Hearts", int32(2024), "2:42", "../Canciones/blood_was_on_my_skin.mp3", "frances", mo.NewGenero(2, "Rock")))
+	r.AgregarCancionSinData(mo.NewCancionC("LLueve Sobre La Ciudad", "Los Bunkers", int32(2005), "3:56", "../Canciones/llueve_sobre_la_ciudad.mp3", "español", mo.NewGenero(2, "Rock")))
+	r.AgregarCancionSinData(mo.NewCancionC("Si No La Tengo", "Diablos Locos", int32(2019), "5:11", "../Canciones/si_no_la_tengo.mp3", "español", mo.NewGenero(3, "Salsa")))
+	r.AgregarCancionSinData(mo.NewCancionC("Something About You", "Eyedress", int32(2021), "2:33", "../Canciones/something_about_you.mp3", "ingles", mo.NewGenero(1, "Alternativo")))
 }

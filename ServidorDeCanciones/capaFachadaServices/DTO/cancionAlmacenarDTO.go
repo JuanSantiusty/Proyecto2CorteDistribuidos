@@ -5,5 +5,6 @@ type CancionAlmacenarDTO struct {
 	Artista_Banda string `json:"artista_banda"`
 	Lanzamiento   int32  `json:"lanzamiento"`
 	Duracion      string `json:"duracion"`
+	Idioma        string `json:"idioma"`
 	Genero        string `json:"genero"`
 }

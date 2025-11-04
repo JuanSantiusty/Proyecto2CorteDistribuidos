@@ -126,6 +126,7 @@ func (v *VistaSpotify) mostrarDetallesCancion(cancionTitulo string) {
 			fmt.Printf("* Título de la canción: %s\n", cancion.Titulo)
 			fmt.Printf("* Artista/Banda: %s\n", cancion.Artista_Banda)
 			fmt.Printf("* Año de lanzamiento: %d\n", cancion.Lanzamiento)
+			fmt.Printf("* Idioma: %s\n", cancion.Idioma)
 			fmt.Printf("* Duración: %s\n", cancion.Duracion)
 			fmt.Println("1. Reproducir")
 			fmt.Println("2. Salir")
@@ -140,7 +141,7 @@ func (v *VistaSpotify) mostrarDetallesCancion(cancionTitulo string) {
 
 			switch numero {
 			case 1:
-				v.mostrarStreamingReal(cancion.Ruta)
+				v.mostrarStreamingReal(cancion.Titulo)
 			case 2:
 				return
 			}

@@ -20,6 +20,7 @@ func MapearCancionAlmacenarDTOACancion(
 		cancionDTO.Artista_Banda,
 		cancionDTO.Lanzamiento,
 		cancionDTO.Duracion,
+		cancionDTO.Idioma,
 		genero,
 	)
 }
@@ -30,11 +31,13 @@ func MapearListaCancionesAListaCancionRespuestaDTO(canciones []mo.Cancion) []dto
 
 	for _, cancion := range canciones {
 		cancionDTO := dto.NuevaCancionRespuestaDTO(
+			cancion.Id,
 			cancion.Titulo,
 			cancion.Artista_Banda,
 			cancion.Lanzamiento,
 			cancion.Duracion,
 			cancion.Ruta,
+			cancion.Idioma,
 			cancion.Genero.Nombre,
 		)
 		cancionesDTO = append(cancionesDTO, cancionDTO)
@@ -66,11 +69,13 @@ func MapearCancionRespuestaDTOACancion(
 // MapearCancionACancionRespuestaDTO convierte una Cancion a CancionRespuestaDTO
 func MapearCancionACancionRespuestaDTO(cancion mo.Cancion) dto.CancionRespuestaDTO {
 	return dto.NuevaCancionRespuestaDTO(
+		cancion.Id,
 		cancion.Titulo,
 		cancion.Artista_Banda,
 		cancion.Lanzamiento,
 		cancion.Duracion,
 		cancion.Ruta,
+		cancion.Idioma,
 		cancion.Genero.Nombre,
 	)
 }

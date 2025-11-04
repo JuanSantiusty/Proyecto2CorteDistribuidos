@@ -1,0 +1,15 @@
+co\edu\unicauca\vista\Menu.class
+co\edu\unicauca\fachadaServices\services\FachadaGestorUsuariosIml.class
+co\edu\unicauca\configuracion\servicios\ClienteDeObjetos.class
+co\edu\unicauca\main\Cliente.class
+co\edu\unicauca\fachadaServices\services\FachadaPrincipal.class
+co\edu\unicauca\capaDeAccesoADatos\entitys\Usuario.class
+co\edu\unicauca\fachadaServices\DTO\PreferenciasDTORespuesta.class
+co\edu\unicauca\fachadaServices\services\FachadaUsuarios.class
+co\edu\unicauca\fachadaServices\DTO\PreferenciaArtistaDTORespuesta.class
+co\edu\unicauca\capaDeAccesoADatos\repositorios\RepositorioUsuarios.class
+co\edu\unicauca\fachadaServices\DTO\PreferenciaIdiomaDTORespuesta.class
+co\edu\unicauca\utilidades\UtilidadesConsola.class
+co\edu\unicauca\capaDeControladores\ControladorPreferenciasUsuariosInt.class
+co\edu\unicauca\configuracion\lector\LectorPropiedadesConfig.class
+co\edu\unicauca\fachadaServices\DTO\PreferenciaGeneroDTORespuesta.class

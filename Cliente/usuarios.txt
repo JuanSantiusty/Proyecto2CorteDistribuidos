@@ -1,0 +1,3 @@
+user:juan/password:juan
+user:pepe/password:12345
+user:kol/password:9876
