@@ -22,19 +22,18 @@ func main() {
 // inicializarAplicacion configura todas las dependencias e inicia la app
 func inicializarAplicacion() error {
 	// Establecer conexiones con ambos servidores
-	connCanciones, connStreaming, err := establecerConexiones()
+	connStreaming, err := establecerConexiones()
 	if err != nil {
 		return err
 	}
-	defer connCanciones.Close()
 	defer connStreaming.Close()
 
 	// Configurar servicios
-	servicioCancion := configurarServicioCancion(connCanciones)
+	servicioCancion, serviciosGenero := configurarServicioCancion("http://localhost:5000")
 	servicioStreaming := configurarServicioStreaming(connStreaming)
 
 	// Configurar capas de la aplicación
-	controlador := configurarControlador(servicioCancion, servicioStreaming)
+	controlador := configurarControlador(servicioCancion, serviciosGenero, servicioStreaming)
 	vista := configurarVista(controlador)
 
 	// Iniciar aplicación
@@ -44,31 +43,23 @@ func inicializarAplicacion() error {
 }
 
 // establecerConexiones establece conexiones con ambos servidores
-func establecerConexiones() (*grpc.ClientConn, *grpc.ClientConn, error) {
-	// Conexión al servidor de canciones (puerto 50053)
-	//fmt.Println("Conectando al servidor de canciones (localhost:50053)...")
-	connCanciones, err := grpc.Dial("localhost:50053", grpc.WithInsecure())
-	if err != nil {
-		return nil, nil, fmt.Errorf("error conectando al servidor de canciones: %v", err)
-	}
-	//fmt.Println("Conexión al servidor de canciones establecida")
+func establecerConexiones() (*grpc.ClientConn, error) {
 
 	// Conexión al servidor de streaming (puerto 50051)
 	//fmt.Println("Conectando al servidor de streaming (localhost:50051)...")
 	connStreaming, err := grpc.Dial("localhost:50051", grpc.WithInsecure())
 	if err != nil {
-		connCanciones.Close()
-		return nil, nil, fmt.Errorf("error conectando al servidor de streaming: %v", err)
+		return nil, fmt.Errorf("error conectando al servidor de streaming: %v", err)
 	}
 	//fmt.Println("Conexión al servidor de streaming establecida")
 
-	return connCanciones, connStreaming, nil
+	return connStreaming, nil
 }
 
 // configurarServicioCancion configura el servicio de canciones
-func configurarServicioCancion(conn *grpc.ClientConn) inf.ServicioCanciones {
+func configurarServicioCancion(url string) (inf.FachadaCanciones, inf.FachadaGeneros) {
 	//fmt.Println("Configurando servicio de canciones...")
-	return inf.NewClienteGRPC(conn)
+	return *inf.NewFachadaCanciones(url), *inf.NewFachadaGeneros(url)
 }
 
 // configurarServicioStreaming configura el servicio de streaming
@@ -78,9 +69,9 @@ func configurarServicioStreaming(conn *grpc.ClientConn) inf.ServicioStreaming {
 }
 
 // configurarControlador configura la capa de controladores con ambos servicios
-func configurarControlador(servicioCancion inf.ServicioCanciones, servicioStreaming inf.ServicioStreaming) *ctrl.ControladorSpotify {
+func configurarControlador(servicioCancion inf.FachadaCanciones, serviciosGenero inf.FachadaGeneros, servicioStreaming inf.ServicioStreaming) *ctrl.ControladorSpotify {
 	//fmt.Println("Configurando controlador de aplicación...")
-	return ctrl.NewControladorSpotify(servicioCancion, servicioStreaming)
+	return ctrl.NewControladorSpotify(servicioCancion, serviciosGenero, servicioStreaming)
 }
 
 // configurarVista configura la capa de vista

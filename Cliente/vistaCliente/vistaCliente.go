@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"fmt"
 	"os"
+	"strconv"
 	"strings"
 	"time"
 
@@ -67,121 +68,92 @@ func (v *VistaSpotify) mostrarMenuPrincipal() bool {
 func (v *VistaSpotify) mostrarMenuGeneros() {
 	for {
 		generos := v.controlador.ObtenerGeneros()
-
 		fmt.Println("\nSpotify")
 		for _, genero := range generos {
-			fmt.Printf("%d. %s\n", genero.ID, genero.Nombre)
+			fmt.Printf("%d. %s\n", genero.Id, genero.Nombre)
 		}
 		fmt.Printf("%d. Atrás\n", len(generos)+1)
 
 		opcion := v.leerEntrada("")
+		indice, _ := strconv.Atoi(opcion)
 
-		numero, err := v.controlador.ValidarOpcionGenero(opcion, len(generos))
-		if err != nil {
-			v.mostrarError(err.Error())
-			continue
+		if indice > len(generos) {
+			break
 		}
 
-		if numero == len(generos)+1 {
-			return
-		}
-
-		v.mostrarCancionesPorGenero(numero)
+		v.mostrarCancionesPorGenero(generos[indice-1].Nombre)
 	}
 }
 
 // ===== MENÚ DE CANCIONES POR GÉNERO =====
 
-func (v *VistaSpotify) mostrarCancionesPorGenero(generoID int) {
-	generos := v.controlador.ObtenerGeneros()
-	var nombreGenero string
-
-	for _, g := range generos {
-		if g.ID == generoID {
-			nombreGenero = g.Nombre
-			break
-		}
-	}
-
+func (v *VistaSpotify) mostrarCancionesPorGenero(genero string) {
 	for {
-		canciones := v.controlador.ObtenerCancionesPorGenero(generoID)
+		canciones := v.controlador.ObtenerCancionesPorGenero(genero)
 
 		fmt.Printf("\nSpotify\n")
-		fmt.Printf("Género: %s\n", nombreGenero)
+		fmt.Printf("Género: %s\n", genero)
 
 		for i, cancion := range canciones {
-			fmt.Printf("%d. %s - %s\n", i+1, cancion.Artista, cancion.Titulo)
+			fmt.Printf("%d. %s - %s\n", i+1, cancion.Artista_Banda, cancion.Titulo)
 		}
 		fmt.Printf("%d. Atrás\n", len(canciones)+1)
 
 		opcion := v.leerEntrada("")
+		indice, _ := strconv.Atoi(opcion)
 
-		numero, err := v.controlador.ValidarOpcionCancion(opcion, len(canciones))
-		if err != nil {
-			v.mostrarError(err.Error())
-			continue
+		if indice > len(canciones) {
+			break
 		}
 
-		if numero == len(canciones)+1 {
-			return
-		}
-
-		cancionSeleccionada := canciones[numero-1]
-		v.mostrarDetallesCancion(&cancionSeleccionada)
+		v.mostrarDetallesCancion(canciones[indice-1].Titulo)
 	}
 }
 
 // ===== DETALLES DE CANCIÓN =====
 
-func (v *VistaSpotify) mostrarDetallesCancion(cancion *ctrl.CancionDetalle) {
+func (v *VistaSpotify) mostrarDetallesCancion(cancionTitulo string) {
 
 	//fmt.Println("Verificando canción en el servidor...")
-	respuesta := v.controlador.BuscarCancionEnServidor(cancion)
+	respuesta := v.controlador.BuscarCancionEnServidor(cancionTitulo)
 
-	if respuesta.Exito {
-		// Actualizar con datos del servidor si se encontró
-		if cancionServidor, ok := respuesta.Datos.(*ctrl.CancionDetalle); ok {
-			cancion = cancionServidor
-			v.mostrarMensaje(" " + respuesta.Mensaje)
+	if respuesta.Codigo == 200 {
+		fmt.Printf(respuesta.Mensaje)
+		cancion := respuesta.Data
+		for {
+			fmt.Printf("\nSpotify\n")
+			fmt.Printf("Canción: %s - %s\n", cancion.Artista_Banda, cancion.Titulo)
+			fmt.Printf("* Título de la canción: %s\n", cancion.Titulo)
+			fmt.Printf("* Artista/Banda: %s\n", cancion.Artista_Banda)
+			fmt.Printf("* Año de lanzamiento: %d\n", cancion.Lanzamiento)
+			fmt.Printf("* Duración: %s\n", cancion.Duracion)
+			fmt.Println("1. Reproducir")
+			fmt.Println("2. Salir")
+
+			opcion := v.leerEntrada("")
+
+			numero, err := v.controlador.ValidarOpcionDetalle(opcion)
+			if err != nil {
+				v.mostrarError(err.Error())
+				continue
+			}
+
+			switch numero {
+			case 1:
+				v.mostrarStreamingReal(cancion.Ruta)
+			case 2:
+				return
+			}
 		}
 	} else {
-		// Si no se encuentra en el servidor, usar datos locales
-		v.mostrarMensaje("Usando datos locales (servidor no respondió)")
-	}
-
-	for {
-		fmt.Printf("\nSpotify\n")
-		fmt.Printf("Canción: %s - %s\n", cancion.Artista, cancion.Titulo)
-		fmt.Printf("* Título de la canción: %s\n", cancion.Titulo)
-		fmt.Printf("* Artista/Banda: %s\n", cancion.Artista)
-		fmt.Printf("* Álbum: %s\n", cancion.Album)
-		fmt.Printf("* Año de lanzamiento: %d\n", cancion.Anio)
-		fmt.Printf("* Duración: %s\n", cancion.Duracion)
-		fmt.Println("1. Reproducir")
-		fmt.Println("2. Salir")
-
-		opcion := v.leerEntrada("")
-
-		numero, err := v.controlador.ValidarOpcionDetalle(opcion)
-		if err != nil {
-			v.mostrarError(err.Error())
-			continue
-		}
-
-		switch numero {
-		case 1:
-			v.mostrarStreamingReal(cancion)
-		case 2:
-			return
-		}
+		fmt.Printf(respuesta.Mensaje)
 	}
 }
 
 // ===== STREAMING REAL =====
 
-func (v *VistaSpotify) mostrarStreamingReal(cancion *ctrl.CancionDetalle) {
+func (v *VistaSpotify) mostrarStreamingReal(cancion string) {
 	fmt.Printf("\nSpotify\n")
-	fmt.Printf("Canción: %s - %s\n", cancion.Artista, cancion.Titulo)
 	fmt.Println("Reproduciendo canción...")
 
 	// Iniciar streaming y reproducción real
